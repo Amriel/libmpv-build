@@ -61,7 +61,7 @@ The workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) is `
 
 ## How to rebuild
 
-1. Push this repo to `Amriel/libmpv-build` (private). Actions must be allowed to run; only GitHub-owned actions
+1. Push this repo to `Amriel/libmpv-build` (public: it is the LGPL build recipe that ships with Scrub Explorer). Actions must be allowed to run; only GitHub-owned actions
    (`actions/checkout`, `actions/cache`, `actions/upload-artifact`, `actions/download-artifact`) are used, pinned to commit SHAs.
 2. Actions -> `build-libmpv` -> *Run workflow*. Inputs:
    * `release` (default off) + `release_tag` (e.g. `libmpv-0.41.0-1095-r1`, must not exist) -> creates a GitHub release in this repo.
