@@ -27,11 +27,12 @@ ExternalProject_Add(mpv
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_CLONE_FLAGS "--filter=tree:0"
     UPDATE_COMMAND ""
-    # With d3d11 VO, ANGLE and Vulkan all off, mpv never runs its DXGI_DEBUG_D3D11
-    # header check, yet d3d-hwaccel still builds vf_d3d11vpp.c -> the GUID is defined
-    # twice against current mingw-w64 (CI run 5). Our patch runs the check for
-    # d3d-hwaccel too. Generated against the pinned commit (blob c49aa3c).
-    PATCH_COMMAND ${EXEC} git am --3way ${CMAKE_SOURCE_DIR}/../patches/mpv-0001-dxgi-debug-check-with-d3d-hwaccel.patch
+    # With d3d11 VO, ANGLE and Vulkan all off, mpv neither builds d3d11_helpers.c nor
+    # runs its DXGI_DEBUG_D3D11 header check, yet d3d-hwaccel still builds
+    # vf_d3d11vpp.c, which needs both: GUID redefinition against current mingw-w64
+    # (CI run 5), then undefined mp_params_to_dxgi_colorspace (run 6). Our patch adds
+    # them for d3d-hwaccel. Generated against the pinned commit (meson.build blob c49aa3c).
+    PATCH_COMMAND ${EXEC} git am --3way ${CMAKE_SOURCE_DIR}/../patches/mpv-0001-d3d11-helpers-for-d3d-hwaccel.patch
     CONFIGURE_COMMAND ${EXEC} CONF=1 meson setup <BINARY_DIR> <SOURCE_DIR>
         --prefix=${MINGW_INSTALL_PREFIX}
         --libdir=${MINGW_INSTALL_PREFIX}/lib

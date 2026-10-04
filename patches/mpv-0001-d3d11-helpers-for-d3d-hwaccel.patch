@@ -1,0 +1,33 @@
+From a4f71bec7cc2ab4c9a5fdbbfd225cde840495671 Mon Sep 17 00:00:00 2001
+From: libmpv-build <libmpv-build@users.noreply.github.com>
+Date: Mon, 5 Oct 2026 02:20:25 +0300
+Subject: [PATCH] meson: build d3d11_helpers and its DXGI_DEBUG_D3D11 check for
+ d3d-hwaccel alone
+
+libmpv-build: d3d11 VO, egl-angle-win32 and vulkan are disabled (OpenGL render API), but d3d-hwaccel still builds vf_d3d11vpp.c, which uses d3d11_helpers.c and relies on HAVE_DXGI_DEBUG_D3D11. Without this: GUID redefinition, then undefined mp_params_to_dxgi_colorspace / d3d11_get_csp_name at link.
+---
+ meson.build | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/meson.build b/meson.build
+index c49aa3c..bcab48a 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1431,6 +1431,14 @@ features += {'d3d-hwaccel': d3d_hwaccel.allowed()}
+ if features['d3d-hwaccel']
+     sources += files('video/d3d.c',
+                      'video/filter/vf_d3d11vpp.c')
++    # vf_d3d11vpp needs d3d11_helpers.c (mp_params_to_dxgi_colorspace,
++    # d3d11_get_csp_name) and its DXGI_DEBUG_D3D11 check, but both are only
++    # added above with the d3d11 VO, ANGLE or Vulkan. With all three off the
++    # GUID was defined twice against current mingw-w64 and the link failed.
++    if 'dxgi-debug-d3d11' not in features
++        sources += files('video/out/gpu/d3d11_helpers.c')
++        features += {'dxgi-debug-d3d11': cc.has_header_symbol('d3d11sdklayers.h', 'DXGI_DEBUG_D3D11')}
++    endif
+ endif
+ 
+ amf = cc.has_header('AMF/core/Factory.h', required:
+-- 
+2.55.0.windows.3
+
