@@ -1,0 +1,32 @@
+From 29c9136cf943914d523b507f67a3a7dc8a9c9f0d Mon Sep 17 00:00:00 2001
+From: libmpv-build <libmpv-build@users.noreply.github.com>
+Date: Mon, 5 Oct 2026 02:03:12 +0300
+Subject: [PATCH] meson: check DXGI_DEBUG_D3D11 also when only d3d-hwaccel is
+ enabled
+
+libmpv-build: d3d11 VO, egl-angle-win32 and vulkan are disabled (we use the OpenGL render API), but d3d-hwaccel still builds vf_d3d11vpp.c, whose d3d11_helpers.h defines DXGI_DEBUG_D3D11 when HAVE_DXGI_DEBUG_D3D11 is 0. With current mingw-w64 that is a redefinition error.
+---
+ meson.build | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/meson.build b/meson.build
+index c49aa3c..602a974 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1431,6 +1431,13 @@ features += {'d3d-hwaccel': d3d_hwaccel.allowed()}
+ if features['d3d-hwaccel']
+     sources += files('video/d3d.c',
+                      'video/filter/vf_d3d11vpp.c')
++    # vf_d3d11vpp includes d3d11_helpers.h, which DEFINE_GUIDs DXGI_DEBUG_D3D11
++    # unless HAVE_DXGI_DEBUG_D3D11. The check above only runs with the d3d11 VO,
++    # ANGLE or Vulkan; with all three off and current mingw-w64 headers (which
++    # define the GUID) the GUID was defined twice.
++    if 'dxgi-debug-d3d11' not in features
++        features += {'dxgi-debug-d3d11': cc.has_header_symbol('d3d11sdklayers.h', 'DXGI_DEBUG_D3D11')}
++    endif
+ endif
+ 
+ amf = cc.has_header('AMF/core/Factory.h', required:
+-- 
+2.55.0.windows.3
+
