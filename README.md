@@ -112,7 +112,7 @@ Release assets: `libmpv-2.dll`, `libmpv-2.dll.sha256`, `SOURCES.txt`, `CONFIG.tx
 | `--disable-network` | No ws2_32 link, no sockets, no TLS. |
 | `--enable-protocol=file` only | No http/https/tcp/udp/rtp/rtmp/ftp/tls/pipe/fd/data/concat... Even a media file or playlist that names `http://...` cannot make ffmpeg connect. |
 | `--disable-avdevice`, no indev/outdev | The reference DLL exposed `avdevice://gdigrab:desktop` (screen capture) and VFW capture (AVICAP32). Gone. |
-| `--disable-programs --disable-doc --disable-postproc` | Not needed (postproc is GPL anyway). |
+| `--disable-programs --disable-doc` | Not needed (libpostproc no longer exists at the pinned commit). |
 | no muxers; encoders only `png`,`mjpeg` | mpv's `screenshot` writes png/jpeg through libavcodec encoders, no muxer. Nothing else is written. |
 | external libs: only `zlib`, `libdav1d` | Everything else has a native ffmpeg decoder (vp8/vp9/opus/vorbis/mp3/aac/flac/webp/png/exr/...). Dropped: libvpx, libwebp, libopus, libvorbis, lame, speex, soxr, bs2b, aom, svt-av1, jxl, zimg(in ffmpeg), vpl, amf, vaapi, openssl, libssh, libsrt, libxml2, x264/x265, bluray, dvd*, rubberband, openal, fontconfig/freetype/harfbuzz/libass(in ffmpeg), libplacebo(in ffmpeg), lcms2(in ffmpeg), modplug, openmpt, mysofa, zvbi, aribcaption, uavs3d, davs2, avisynth, vapoursynth. |
 | hwaccels: `*_d3d11va`, `*_d3d11va2`, `*_dxva2`, `*_nvdec` (+ `--enable-d3d11va --enable-dxva2 --enable-ffnvcodec --enable-cuda --enable-nvdec`) | Hardware decode. nv-codec-headers are MIT headers; `nvcuda`/`nvcuvid` are `dlopen`ed at runtime. No QSV/AMF/Vulkan/VAAPI. |

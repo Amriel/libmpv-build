@@ -256,6 +256,19 @@
       "why": "Build-time only: libplacebo generates its OpenGL loader with it."
     },
     {
+      "name": "vulkan-header",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/KhronosGroup/Vulkan-Headers.git",
+      "rev": "450bd2232225d6c7728a4108055ac2e37cef6475",
+      "ref": "libplacebo v7.360.1 submodule 3rdparty/Vulkan-Headers",
+      "version": "headers only",
+      "license": "Apache-2.0 OR MIT",
+      "depth": 1,
+      "sparse": null,
+      "why": "Build-time only: libplacebo compiles src/vulkan/stubs.c even with -Dvulkan=disabled and that includes <vulkan/vulkan.h>. Headers only, no Vulkan code in the DLL."
+    },
+    {
       "name": "fast_float",
       "role": "lib",
       "kind": "git",
@@ -342,6 +355,7 @@
     "libzimg",
     "glad",
     "fast_float",
+    "vulkan-header",
     "libplacebo",
     "angle-headers",
     "ffmpeg",

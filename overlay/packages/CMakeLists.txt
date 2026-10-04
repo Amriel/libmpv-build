@@ -25,6 +25,7 @@ list(APPEND ep
     libzimg
     glad
     fast_float
+    vulkan-header
     libplacebo
     angle-headers
     ffmpeg

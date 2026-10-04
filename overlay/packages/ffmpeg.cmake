@@ -83,7 +83,6 @@ ExternalProject_Add(ffmpeg
         --disable-programs
         --disable-doc
         --disable-avdevice
-        --disable-postproc
         # --- the only external libraries
         --enable-zlib
         --enable-libdav1d
