@@ -1,0 +1,239 @@
+name: build-libmpv
+
+# Manual only. No schedules, no push/PR triggers: nothing rebuilds unless somebody presses the button,
+# and the result only changes when pins.json / overlay/ / tools/ change.
+run-name: "libmpv ${{ inputs.release && format('RELEASE {0}', inputs.release_tag) || 'build (no release)' }} / ${{ inputs.include_v3 && 'x86-64 + x86-64-v3' || 'x86-64' }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a GitHub release in this repository (otherwise: workflow artifact only)"
+        type: boolean
+        default: false
+      release_tag:
+        description: "Release tag, REQUIRED when release=true (must not exist yet), e.g. libmpv-0.41.0-1095-r1"
+        type: string
+        required: false
+      include_v3:
+        description: "Also build the x86-64-v3 (AVX2/BMI2, Haswell+) variant (doubles the CI time: separate toolchain)"
+        type: boolean
+        default: false
+      lto:
+        description: "ThinLTO for libraries + libmpv (same as the upstream recipe). Off = faster, only for debugging"
+        type: boolean
+        default: true
+      runner:
+        description: "Runner label (ubuntu-latest is fine; a 4+ core runner makes the first build much faster)"
+        type: string
+        default: ubuntu-latest
+
+permissions:
+  contents: read
+
+env:
+  # Must equal pins.json -> build_host.arch_archive_snapshot (tools/setup_host.sh fails if not).
+  ARCH_SNAPSHOT: "2026/10/04"
+
+concurrency:
+  group: libmpv-build
+  cancel-in-progress: false
+
+jobs:
+  prep:
+    name: validate inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE: ${{ inputs.release }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [ "$RELEASE" = "true" ]; then
+            if [ -z "$TAG" ]; then echo "::error::release=true needs release_tag"; exit 1; fi
+            if ! printf '%s' "$TAG" | grep -Eq '^[A-Za-z0-9._-]+$'; then echo "::error::release_tag has invalid characters"; exit 1; fi
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "::error::release $TAG already exists (releases are immutable here; pick a new tag)"; exit 1
+            fi
+          fi
+          echo "inputs OK"
+
+  build:
+    name: build (${{ matrix.variant }})
+    needs: prep
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(inputs.include_v3 && '["64","64-v3"]' || '["64"]') }}
+    container:
+      # Digest-pinned. tag is informational only. Value is mirrored in pins.json (checked below).
+      image: ghcr.io/archlinux/archlinux:base-devel@sha256:bf79b91ce5e8cb03abd7c06c33e197b56368cbe364855d9c17689540c7f478aa
+    env:
+      LTO: ${{ inputs.lto && 'ON' || 'OFF' }}
+      VARIANT: ${{ matrix.variant }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # git + python are needed before checkout, so the Arch snapshot is selected right here.
+      - name: Bootstrap host (frozen Arch snapshot, git, python)
+        run: |
+          set -euo pipefail
+          echo "Server = https://archive.archlinux.org/repos/${ARCH_SNAPSHOT}/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Syyuu --noconfirm
+          pacman -S --noconfirm --needed git python
+
+      - name: Checkout this repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check workflow <-> pins.json consistency
+        id: pins
+        run: |
+          set -euo pipefail
+          python3 tools/pins_info.py check-workflow .github/workflows/build.yml
+          echo "upstream_rev=$(python3 tools/pins_info.py get upstream_recipe.rev)" >> "$GITHUB_OUTPUT"
+          echo "toolchain_key=$(python3 tools/pins_info.py cache-key "$VARIANT")" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout upstream recipe (pinned commit)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: shinchiro/mpv-winbuild-cmake
+          ref: ${{ steps.pins.outputs.upstream_rev }}
+          path: upstream
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install host packages
+        run: bash tools/setup_host.sh
+
+      - name: Apply overlay + pins (fails if anything is unpinned)
+        run: python3 tools/apply_pins.py --upstream upstream --repo .
+
+      - name: Fetch all sources at their pinned commits
+        run: python3 tools/fetch_sources.py pins.json upstream/src_packages
+
+      - name: Restore toolchain cache
+        id: tc_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            upstream/clang_root_${{ matrix.variant }}
+            upstream/build${{ matrix.variant }}/install
+          key: ${{ steps.pins.outputs.toolchain_key }}
+
+      - name: Build toolchain (LLVM + mingw-w64) - skipped on cache hit
+        run: bash tools/build.sh "$VARIANT" toolchain
+
+      - name: Save toolchain cache
+        if: ${{ steps.tc_cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            upstream/clang_root_${{ matrix.variant }}
+            upstream/build${{ matrix.variant }}/install
+          key: ${{ steps.pins.outputs.toolchain_key }}
+
+      - name: Build libraries + libmpv
+        run: bash tools/build.sh "$VARIANT" libs
+
+      - name: Assemble release files and run the policy checks
+        run: |
+          set -euo pipefail
+          B="upstream/build${VARIANT}"
+          OUT="dist/${VARIANT}"
+          rm -rf "$OUT"; mkdir -p "$OUT"
+          cp -a "$B/libmpv-dist/libmpv-2.dll" "$B/libmpv-dist/libmpv.dll.a" "$OUT/"
+          cp -a "$B/libmpv-dist/include" "$OUT/include"
+          [ -f "$B/libmpv-dist/libmpv-2.pdb" ] && cp -a "$B/libmpv-dist/libmpv-2.pdb" "$OUT/" || true
+          pacman -Q > "$OUT/host-packages.txt"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          python3 tools/gen_info.py --pins pins.json --dist "$B/libmpv-dist" --meta "$B/libmpv-meta" \
+              --srcdir upstream/src_packages --out "$OUT" --variant "$VARIANT" --lto "$LTO" \
+              --run-url "$RUN_URL" --host-packages "$OUT/host-packages.txt"
+          ( cd "$OUT" && sha256sum libmpv-2.dll > libmpv-2.dll.sha256 && cat libmpv-2.dll.sha256 )
+          python3 tools/check_dll.py "$OUT/libmpv-2.dll" --json "$OUT/check_dll.json" | tee "$OUT/check_dll.txt"
+
+      - name: Upload build output
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: libmpv-${{ matrix.variant }}
+          path: dist/${{ matrix.variant }}
+          if-no-files-found: warn
+
+      - name: Collect build logs
+        if: ${{ always() }}
+        run: |
+          set +e
+          mkdir -p logs
+          find "upstream/build${VARIANT}" -type f \( -name '*-*.log' -o -path '*/ffbuild/config.log' \) -print0 2>/dev/null \
+              | tar --null -czf "logs/build-logs-${VARIANT}.tar.gz" -T - 2>/dev/null
+          df -h / > logs/df.txt
+          ls -l logs
+
+      - name: Upload build logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: logs-${{ matrix.variant }}
+          path: logs
+          if-no-files-found: ignore
+
+  release:
+    name: publish release
+    needs: build
+    if: ${{ inputs.release }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build outputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: libmpv-*
+          path: art
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+          INCLUDE_V3: ${{ inputs.include_v3 }}
+        run: |
+          set -euo pipefail
+          ls -R art | head -60
+          R=release_files; mkdir -p "$R"
+          B=art/libmpv-64
+          cp "$B/libmpv-2.dll" "$B/libmpv-2.dll.sha256" "$B/SOURCES.txt" "$B/CONFIG.txt" "$R/"
+          ( cd "$B" && zip -qr "../../$R/libmpv-dev.zip" include libmpv.dll.a )
+          ( cd "$B" && zip -qr "../../$R/licenses.zip" licenses )
+          ( cd "$B" && zip -qr "../../$R/build-evidence.zip" evidence check_dll.txt check_dll.json host-packages.txt )
+          if [ "$INCLUDE_V3" = "true" ]; then
+            V=art/libmpv-64-v3
+            cp "$V/libmpv-2.dll" "$R/libmpv-2.x86-64-v3.dll"
+            ( cd "$R" && sha256sum libmpv-2.x86-64-v3.dll > libmpv-2.x86-64-v3.dll.sha256 )
+            cp "$V/CONFIG.txt" "$R/CONFIG.x86-64-v3.txt"
+          fi
+          {
+            echo "libmpv (LGPL-2.1+, local files only, OpenGL render API) for Windows x86_64."
+            echo
+            echo "Built from pinned sources; see SOURCES.txt (every component + exact commit/tarball) and CONFIG.txt."
+            echo "Rebuild recipe: this repository at tag \`$TAG\`. Build run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "sha256:"
+            echo '```'
+            ( cd "$R" && cat *.sha256 )
+            echo '```'
+            echo
+            echo "Verify locally with verify.ps1 from this repository."
+            echo "The x86-64-v3 DLL (if present) must be renamed to libmpv-2.dll and needs a CPU with AVX2/BMI2/FMA."
+          } > notes.md
+          gh release create "$TAG" "$R"/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "libmpv $TAG" --notes-file notes.md

@@ -1,0 +1,314 @@
+{
+  "_comment": [
+    "SINGLE SOURCE OF TRUTH for every external input of this build.",
+    "Every git source is pinned to a full 40-hex commit (the 'ref' field is only the human-readable tag/branch it was resolved from on 2026-10-04).",
+    "Every tarball is pinned to url + sha256.",
+    "tools/apply_pins.py rewrites the upstream package files so that GIT_TAG == rev, and FAILS the build if any package in the final package list has no pin here.",
+    "To bump a pin: change 'rev' (and 'ref'/'version'), re-run the workflow, read README.md section 'Bumping a pin'."
+  ],
+
+  "upstream_recipe": {
+    "name": "shinchiro/mpv-winbuild-cmake",
+    "url": "https://github.com/shinchiro/mpv-winbuild-cmake.git",
+    "rev": "05a60b3cfd04e3e3b89918f4a27f3dde2935dff2",
+    "ref": "master (HEAD on 2026-10-04, last commit 2026-09-19 'libvpl: fix MinGW secure string macro conflicts')",
+    "license": "NONE PUBLISHED (GitHub reports license=null, no LICENSE file). Therefore it is NOT vendored: it is checked out at build time at this exact commit and our overlay/ is copied over it. See NOTICE."
+  },
+
+  "build_host": {
+    "container_image": "ghcr.io/archlinux/archlinux",
+    "container_tag_when_pinned": "base-devel",
+    "container_digest": "sha256:bf79b91ce5e8cb03abd7c06c33e197b56368cbe364855d9c17689540c7f478aa",
+    "arch_archive_snapshot": "2026/10/04",
+    "arch_archive_note": "pacman is pointed at https://archive.archlinux.org/repos/<snapshot>/ and run with -Syyuu, so the installed host package set (clang, cmake, meson, nasm, python-jinja, ...) is frozen to that day."
+  },
+
+  "actions": {
+    "actions/checkout": {"tag": "v7.0.1", "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1"},
+    "actions/cache": {"tag": "v6.1.0", "sha": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"},
+    "actions/upload-artifact": {"tag": "v7.0.1", "sha": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"},
+    "actions/download-artifact": {"tag": "v8.0.1", "sha": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"}
+  },
+
+  "cmake_externalproject": {
+    "repo": "Kitware/CMake",
+    "tag": "v3.31.6",
+    "rev": "859ca5c4d7396a011a462878179bc173e1283731",
+    "file": "Modules/ExternalProject.cmake",
+    "sha256": "303d2222b3b39df5e94997ec64a07f6877bbf5297978bf3134347389200da695",
+    "license": "BSD-3-Clause",
+    "note": "The upstream recipe curl's this file from a mutable tag at configure time; our overlay/cmake/download_externalproject.cmake fetches it by commit and verifies the sha256."
+  },
+
+  "upstream_files_expected_sha256": {
+    "_comment": "sha256 of every upstream file that we replace (overlay/) or text-edit (tools/apply_pins.py) at the pinned upstream commit. apply_pins.py refuses to touch a file whose hash differs, so bumping upstream_recipe.rev forces a conscious re-review.",
+    "packages/CMakeLists.txt": "7b67de59bbd02b15f072e1630d89ded9252ea31dbb3e63b5a3961e4acb58cb0d",
+    "packages/ffmpeg.cmake": "359c9c7da360f57d3a438e6fe117af6169cbd9aa3672751fd2bfc31e02be8fff",
+    "packages/mpv.cmake": "cfb9b0fbaaf6013069fe3eeda7e9e9644546f09cd772dbd549f8eb7fa21c7122",
+    "packages/libass.cmake": "41ec0c08160e4d0a31b2d9dc214985056ad9b61d77530c526ee77b0acc9c84b6",
+    "packages/libplacebo.cmake": "64c407a343a43bfe8b372b12d5dac4621d1362f094239cfb2c215e6ce213332f",
+    "packages/freetype2.cmake": "eed687f636ec335af2e341537e089857f75a659e69d02da5176715628bf3b035",
+    "packages/harfbuzz.cmake": "9b8a2f9f2b7dfb440ff7f6c925489ae1cee64b3119f5556f6c103c786f653f4b",
+    "packages/lcms2.cmake": "78ac60adc47be993cf59f7f1d318d78558a2850755a8b4b5181f68434245edbe",
+    "packages/libzimg.cmake": "918aac808ae4d526a9148c16735a615c6e7467ccda623afca07d34aee4b87c06",
+    "cmake/download_externalproject.cmake": "cb384f2032ea35ef487fdae7e32bdcdec9b48464df0ea8c54b3ac3c0b7ea9f88",
+    "toolchain/CMakeLists.txt": "c0f1312ce4b803fe21daaa215163cab1345e85cffad0fa4c454f173763ac372e",
+    "toolchain/llvm/llvm-clang.cmake": "353795226d32b856d066d39b1d9c79f333fc70637551b6c57421a9186c321748",
+    "toolchain/llvm/llvm.cmake": "3f51e7e8027575d13cdae6d5de4ca46ff597700bfab3737e946a2b76a3e2e372"
+  },
+
+  "sources": [
+    {
+      "name": "llvm",
+      "role": "toolchain",
+      "kind": "git",
+      "url": "https://github.com/llvm/llvm-project.git",
+      "rev": "85ac560262434c9ccfc0c183ec22d4138ed647fb",
+      "ref": "llvmorg-23.1.2",
+      "version": "23.1.2",
+      "license": "Apache-2.0 WITH LLVM-exception (clang, lld, compiler-rt, libc++, libc++abi, libunwind)",
+      "depth": 1,
+      "sparse": ["/*", "!*/test", "!/lldb", "!/mlir", "!/clang-tools-extra", "!/polly", "!/bolt", "!/flang"],
+      "why": "Host+target compiler. Upstream tracks branch release/23.x; we pin the 23.1.2 release tag (same release series the recipe is written for, clang_version=23)."
+    },
+    {
+      "name": "mingw-w64",
+      "role": "toolchain",
+      "kind": "git",
+      "url": "https://github.com/mingw-w64/mingw-w64.git",
+      "rev": "2b2acb3ae1f5871fb40f19aa5dbf8e7083d4e108",
+      "ref": "master @ 2026-10-03 (newest commit before the reference build, 2026-10-04 12:00Z)",
+      "version": "git-2b2acb3 (after v14.0.0)",
+      "license": "ZPL-2.1 / public domain / BSD-style (headers+CRT+winpthreads)",
+      "depth": 1,
+      "sparse": null,
+      "why": "Upstream recipe tracks master and is tuned to it; v14.0.0 (9b3dd0125792fe94d16cacdc596dbd42fca1b369, 2026-03-24) is the fallback if master breaks."
+    },
+
+    {
+      "name": "zlib",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/zlib-ng/zlib-ng.git",
+      "rev": "12731092979c6d07f42da27da673a9f6c7b13586",
+      "ref": "2.3.3",
+      "version": "2.3.3 (zlib-ng, ZLIB_COMPAT=ON)",
+      "license": "Zlib",
+      "depth": 1,
+      "sparse": null,
+      "why": "ffmpeg png/exr/tiff/mov decoders and mpv need inflate."
+    },
+    {
+      "name": "libiconv",
+      "role": "lib",
+      "kind": "url",
+      "url": "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz",
+      "sha256": "3B08F5F4F9B4EB82F151A7040BFD6FE6C6FB922EFE4B1659C66EA933276965E8",
+      "version": "1.18",
+      "license": "LGPL-2.1-or-later (library)",
+      "why": "Charset conversion for libass / mpv (static)."
+    },
+    {
+      "name": "fribidi",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/fribidi/fribidi.git",
+      "rev": "b93119f5fdc7ea47672cc304c1455ffa6dfe7536",
+      "ref": "v1.0.17",
+      "version": "1.0.17",
+      "license": "LGPL-2.1-or-later",
+      "depth": 1,
+      "sparse": null,
+      "why": "Hard dependency of libass (OSD text)."
+    },
+    {
+      "name": "freetype2",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/freetype/freetype.git",
+      "rev": "0a0221a1347e2f1e07c395263540026e9a0aa7c7",
+      "ref": "VER-2-14-3",
+      "version": "2.14.3",
+      "license": "FTL (BSD-style) OR GPL-2.0-only -- we use it under the FTL",
+      "depth": 1,
+      "sparse": null,
+      "why": "Hard dependency of libass."
+    },
+    {
+      "name": "harfbuzz",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/harfbuzz/harfbuzz.git",
+      "rev": "eb033319fc2ebe723597fa497d4bb4331bab8b6b",
+      "ref": "14.5.1",
+      "version": "14.5.1",
+      "license": "MIT (Old MIT)",
+      "depth": 1,
+      "sparse": ["/*", "!test"],
+      "why": "Hard dependency of libass."
+    },
+    {
+      "name": "libass",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/libass/libass.git",
+      "rev": "4a05d8127f525943ebf45fdc6497c9e665947f0d",
+      "ref": "0.17.5",
+      "version": "0.17.5",
+      "license": "ISC",
+      "depth": 1,
+      "sparse": null,
+      "why": "mpv meson.build has an unconditional dependency('libass') (OSD/subtitles); cannot be removed."
+    },
+    {
+      "name": "nvcodec-headers",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/FFmpeg/nv-codec-headers.git",
+      "rev": "0a6fba9a2820628b8103464f4c8753ee05838baa",
+      "ref": "n13.1.15.0",
+      "version": "13.1.15.0 (ffnvcodec)",
+      "license": "MIT",
+      "depth": 1,
+      "sparse": null,
+      "why": "Headers only; dlopen()s nvcuda/nvcuvid at runtime for nvdec + CUDA/GL interop. No NVIDIA code is shipped."
+    },
+    {
+      "name": "xxhash",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/Cyan4973/xxHash.git",
+      "rev": "c87183a77d67f7d37e3d2d1b7eaac5e7c695e4f0",
+      "ref": "v0.8.4",
+      "version": "0.8.4 (libxxhash only)",
+      "license": "BSD-2-Clause (library)",
+      "depth": 1,
+      "sparse": null,
+      "why": "Used by libplacebo (shader cache hashing) and dav1d's muxer option in the upstream recipe."
+    },
+    {
+      "name": "dav1d",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/videolan/dav1d.git",
+      "rev": "54706fc6bc0cdecab7e9593974a4039cc038fca7",
+      "ref": "1.5.4",
+      "version": "1.5.4",
+      "license": "BSD-2-Clause",
+      "depth": 1,
+      "sparse": null,
+      "why": "Software AV1 decoder (ffmpeg libdav1d). Official upstream is code.videolan.org/videolan/dav1d; the GitHub mirror has identical history so the commit hash is the same (the upstream recipe's code.videolan.org URL is replaced by the mirror because CI runners are frequently rate-limited there)."
+    },
+    {
+      "name": "lcms2",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/mm2/Little-CMS.git",
+      "rev": "21c582a594fe5279f90c0b93437c398f93bf62b0",
+      "ref": "lcms2.19.1",
+      "version": "2.19.1",
+      "license": "MIT",
+      "depth": 1,
+      "sparse": null,
+      "why": "ICC colour management for libplacebo/mpv (kept for parity with the verified reference build; tools/jpeg/tiff disabled)."
+    },
+    {
+      "name": "libzimg",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/sekrit-twc/zimg.git",
+      "rev": "f819b14e8f39d1282400b0d9543e8ef73c1b2bbd",
+      "ref": "release-3.0.6",
+      "version": "3.0.6",
+      "license": "WTFPL-2.0",
+      "depth": 1,
+      "sparse": null,
+      "why": "mpv prefers zimg for software pixel-format conversion (float/16-bit EXR, DPX frames). Kept for parity with the verified reference build; set -Dzimg=disabled + drop this entry to remove (README)."
+    },
+    {
+      "name": "glad",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/Dav1dde/glad.git",
+      "rev": "73db193f853e2ee079bf3ca8a64aa2eaf6459043",
+      "ref": "glad2 branch = v2.0.8 = libplacebo v7.360.1 submodule 3rdparty/glad",
+      "version": "2.0.8",
+      "license": "MIT (generator); generated GL loader is public domain/MIT",
+      "depth": 1,
+      "sparse": null,
+      "why": "Build-time only: libplacebo generates its OpenGL loader with it."
+    },
+    {
+      "name": "fast_float",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/fastfloat/fast_float.git",
+      "rev": "97b54ca9e75f5303507699d27c6b4f4efe4641a1",
+      "ref": "libplacebo v7.360.1 submodule 3rdparty/fast_float",
+      "version": "8.x (2025-12-31)",
+      "license": "Apache-2.0 OR MIT OR BSL-1.0",
+      "depth": 1,
+      "sparse": null,
+      "why": "Header-only, build-time input of libplacebo."
+    },
+    {
+      "name": "libplacebo",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/haasn/libplacebo.git",
+      "rev": "cee9b076f2c63104ccfd497fa79c39a867293ec4",
+      "ref": "v7.360.1",
+      "version": "7.360.1",
+      "license": "LGPL-2.1-or-later",
+      "depth": 1,
+      "sparse": null,
+      "why": "Hard dependency of mpv (>=7.360.1). Built with the OpenGL backend only (no Vulkan, no D3D11, no shaderc/glslang/spirv)."
+    },
+    {
+      "name": "angle-headers",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/google/angle.git",
+      "rev": "0cb8023c01f92b29f3738ea7472d06f8f059ed84",
+      "ref": "main @ 2026-07-06 (already the GIT_RESET pin of the upstream recipe)",
+      "version": "headers only (include/EGL, include/KHR)",
+      "license": "BSD-3-Clause",
+      "depth": 1,
+      "sparse": ["include/EGL", "include/KHR"],
+      "sparse_mode": "cone-less",
+      "why": "EGL/KHR headers so that mpv can compile its d3d11->EGL(ANGLE) interop code. No ANGLE binary is built or shipped."
+    },
+    {
+      "name": "ffmpeg",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/FFmpeg/FFmpeg.git",
+      "rev": "f1a000d41f3b5de2c305b5abb6e2718d070fedcc",
+      "ref": "master @ 2026-10-04T11:54Z 'avcodec/mpeg12dec: reject a picture in the extradata' (== ffmpeg-lgpl-x86_64-git-f1a000d41 of the verified reference release)",
+      "version": "git-f1a000d41",
+      "license": "LGPL-2.1-or-later (configured WITHOUT --enable-gpl, --enable-version3, --enable-nonfree)",
+      "depth": 0,
+      "sparse": ["/*", "!tests/ref/fate"],
+      "why": "Exactly the ffmpeg commit that the verified reference libmpv (mpv 413ff0b1cd) was built with. depth 0 (blobless full history) so that `git describe` gives a real version string."
+    },
+    {
+      "name": "mpv",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/mpv-player/mpv.git",
+      "rev": "413ff0b1cd4585294803308a1a14be2fad30cede",
+      "ref": "master @ 2026-10-03 'ci: enable vapoursynth' (== libmpv 0.41.0-1095 of the verified reference release)",
+      "version": "0.41.0-1095-g413ff0b1cd",
+      "license": "LGPL-2.1-or-later (built with -Dgpl=false)",
+      "depth": 0,
+      "sparse": null,
+      "why": "Same commit as the verified reference binary. The nearest release tag (v0.41.0) is 1095 commits older and would silently drop fixes the app was verified against; a pinned commit is as reproducible as a tag."
+    }
+  ],
+
+  "package_order": [
+    "zlib", "libiconv", "fribidi", "freetype2", "harfbuzz", "libass",
+    "nvcodec-headers", "xxhash", "dav1d", "lcms2", "libzimg",
+    "glad", "fast_float", "libplacebo", "angle-headers", "ffmpeg", "mpv"
+  ]
+}

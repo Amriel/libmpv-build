@@ -1,0 +1,10 @@
+# Everything that runs on the Linux build container must keep LF line endings,
+# even when committed from Windows with core.autocrlf=true.
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.cmake text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.patch text eol=lf -whitespace
+verify.ps1 text eol=lf
