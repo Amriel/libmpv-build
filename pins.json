@@ -6,7 +6,6 @@
     "tools/apply_pins.py rewrites the upstream package files so that GIT_TAG == rev, and FAILS the build if any package in the final package list has no pin here.",
     "To bump a pin: change 'rev' (and 'ref'/'version'), re-run the workflow, read README.md section 'Bumping a pin'."
   ],
-
   "upstream_recipe": {
     "name": "shinchiro/mpv-winbuild-cmake",
     "url": "https://github.com/shinchiro/mpv-winbuild-cmake.git",
@@ -14,7 +13,6 @@
     "ref": "master (HEAD on 2026-10-04, last commit 2026-09-19 'libvpl: fix MinGW secure string macro conflicts')",
     "license": "NONE PUBLISHED (GitHub reports license=null, no LICENSE file). Therefore it is NOT vendored: it is checked out at build time at this exact commit and our overlay/ is copied over it. See NOTICE."
   },
-
   "build_host": {
     "container_image": "ghcr.io/archlinux/archlinux",
     "container_tag_when_pinned": "base-devel",
@@ -22,14 +20,24 @@
     "arch_archive_snapshot": "2026/10/04",
     "arch_archive_note": "pacman is pointed at https://archive.archlinux.org/repos/<snapshot>/ and run with -Syyuu, so the installed host package set (clang, cmake, meson, nasm, python-jinja, ...) is frozen to that day."
   },
-
   "actions": {
-    "actions/checkout": {"tag": "v7.0.1", "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1"},
-    "actions/cache": {"tag": "v6.1.0", "sha": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"},
-    "actions/upload-artifact": {"tag": "v7.0.1", "sha": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"},
-    "actions/download-artifact": {"tag": "v8.0.1", "sha": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"}
+    "actions/checkout": {
+      "tag": "v7.0.1",
+      "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+    },
+    "actions/cache": {
+      "tag": "v6.1.0",
+      "sha": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+    },
+    "actions/upload-artifact": {
+      "tag": "v7.0.1",
+      "sha": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+    },
+    "actions/download-artifact": {
+      "tag": "v8.0.1",
+      "sha": "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
+    }
   },
-
   "cmake_externalproject": {
     "repo": "Kitware/CMake",
     "tag": "v3.31.6",
@@ -39,7 +47,6 @@
     "license": "BSD-3-Clause",
     "note": "The upstream recipe curl's this file from a mutable tag at configure time; our overlay/cmake/download_externalproject.cmake fetches it by commit and verifies the sha256."
   },
-
   "upstream_files_expected_sha256": {
     "_comment": "sha256 of every upstream file that we replace (overlay/) or text-edit (tools/apply_pins.py) at the pinned upstream commit. apply_pins.py refuses to touch a file whose hash differs, so bumping upstream_recipe.rev forces a conscious re-review.",
     "packages/CMakeLists.txt": "7b67de59bbd02b15f072e1630d89ded9252ea31dbb3e63b5a3961e4acb58cb0d",
@@ -56,7 +63,6 @@
     "toolchain/llvm/llvm-clang.cmake": "353795226d32b856d066d39b1d9c79f333fc70637551b6c57421a9186c321748",
     "toolchain/llvm/llvm.cmake": "3f51e7e8027575d13cdae6d5de4ca46ff597700bfab3737e946a2b76a3e2e372"
   },
-
   "sources": [
     {
       "name": "llvm",
@@ -68,7 +74,16 @@
       "version": "23.1.2",
       "license": "Apache-2.0 WITH LLVM-exception (clang, lld, compiler-rt, libc++, libc++abi, libunwind)",
       "depth": 1,
-      "sparse": ["/*", "!*/test", "!/lldb", "!/mlir", "!/clang-tools-extra", "!/polly", "!/bolt", "!/flang"],
+      "sparse": [
+        "/*",
+        "!*/test",
+        "!/lldb",
+        "!/mlir",
+        "!/clang-tools-extra",
+        "!/polly",
+        "!/bolt",
+        "!/flang"
+      ],
       "why": "Host+target compiler. Upstream tracks branch release/23.x; we pin the 23.1.2 release tag (same release series the recipe is written for, clang_version=23)."
     },
     {
@@ -84,7 +99,6 @@
       "sparse": null,
       "why": "Upstream recipe tracks master and is tuned to it; v14.0.0 (9b3dd0125792fe94d16cacdc596dbd42fca1b369, 2026-03-24) is the fallback if master breaks."
     },
-
     {
       "name": "zlib",
       "role": "lib",
@@ -144,7 +158,10 @@
       "version": "14.5.1",
       "license": "MIT (Old MIT)",
       "depth": 1,
-      "sparse": ["/*", "!test"],
+      "sparse": [
+        "/*",
+        "!test"
+      ],
       "why": "Hard dependency of libass."
     },
     {
@@ -274,7 +291,10 @@
       "version": "headers only (include/EGL, include/KHR)",
       "license": "BSD-3-Clause",
       "depth": 1,
-      "sparse": ["include/EGL", "include/KHR"],
+      "sparse": [
+        "include/EGL",
+        "include/KHR"
+      ],
       "sparse_mode": "cone-less",
       "why": "EGL/KHR headers so that mpv can compile its d3d11->EGL(ANGLE) interop code. No ANGLE binary is built or shipped."
     },
@@ -288,7 +308,10 @@
       "version": "git-f1a000d41",
       "license": "LGPL-2.1-or-later (configured WITHOUT --enable-gpl, --enable-version3, --enable-nonfree)",
       "depth": 0,
-      "sparse": ["/*", "!tests/ref/fate"],
+      "sparse": [
+        "/*",
+        "!tests/ref/fate"
+      ],
       "why": "Exactly the ffmpeg commit that the verified reference libmpv (mpv 413ff0b1cd) was built with. depth 0 (blobless full history) so that `git describe` gives a real version string."
     },
     {
@@ -305,10 +328,27 @@
       "why": "Same commit as the verified reference binary. The nearest release tag (v0.41.0) is 1095 commits older and would silently drop fixes the app was verified against; a pinned commit is as reproducible as a tag."
     }
   ],
-
   "package_order": [
-    "zlib", "libiconv", "fribidi", "freetype2", "harfbuzz", "libass",
-    "nvcodec-headers", "xxhash", "dav1d", "lcms2", "libzimg",
-    "glad", "fast_float", "libplacebo", "angle-headers", "ffmpeg", "mpv"
-  ]
+    "zlib",
+    "libiconv",
+    "fribidi",
+    "freetype2",
+    "harfbuzz",
+    "libass",
+    "nvcodec-headers",
+    "xxhash",
+    "dav1d",
+    "lcms2",
+    "libzimg",
+    "glad",
+    "fast_float",
+    "libplacebo",
+    "angle-headers",
+    "ffmpeg",
+    "mpv"
+  ],
+  "patches_sha256": {
+    "_comment": "Verbatim upstream-project patches applied by package recipes (patches/ is outside overlay/, so it does not touch the toolchain cache key). Re-check with sha256sum when changing.",
+    "patches/libzimg-0001-missing-includes-libcxx23.patch": "47b40564f3702fc70475063ce62060e9a0809ac7f80ef0090204ddf8622f6dd9"
+  }
 }

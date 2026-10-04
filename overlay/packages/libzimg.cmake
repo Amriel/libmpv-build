@@ -12,7 +12,7 @@ ExternalProject_Add(libzimg
     # zimg.cpp uses std::exception_ptr (first CI run failed exactly there). We stay
     # on 3.0.6 instead of master because master also changes colour defaults
     # (chromatic adaptation off by default).
-    PATCH_COMMAND ${EXEC} git am --3way ${CMAKE_CURRENT_SOURCE_DIR}/libzimg-*.patch
+    PATCH_COMMAND ${EXEC} git am --3way ${CMAKE_SOURCE_DIR}/../patches/libzimg-0001-missing-includes-libcxx23.patch
     CONFIGURE_COMMAND ${EXEC} <SOURCE_DIR>/autogen.sh && CONF=1 <SOURCE_DIR>/configure
         --host=${TARGET_ARCH}
         --prefix=${MINGW_INSTALL_PREFIX}
