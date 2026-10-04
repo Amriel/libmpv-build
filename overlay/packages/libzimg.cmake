@@ -7,7 +7,7 @@ ExternalProject_Add(libzimg
     GIT_CLONE_FLAGS "--filter=tree:0"
     GIT_SUBMODULES ""
     UPDATE_COMMAND ""
-    # Upstream commit 67e0603271c0 "Add missing includes for libcxx-23" on top of
+    # Backport of upstream commit 67e0603271c0 "Add missing includes for libcxx-23" to
     # release-3.0.6: libc++ 23 no longer pulls <exception> in transitively and
     # zimg.cpp uses std::exception_ptr (first CI run failed exactly there). We stay
     # on 3.0.6 instead of master because master also changes colour defaults

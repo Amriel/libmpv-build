@@ -349,6 +349,6 @@
   ],
   "patches_sha256": {
     "_comment": "Verbatim upstream-project patches applied by package recipes (patches/ is outside overlay/, so it does not touch the toolchain cache key). Re-check with sha256sum when changing.",
-    "patches/libzimg-0001-missing-includes-libcxx23.patch": "47b40564f3702fc70475063ce62060e9a0809ac7f80ef0090204ddf8622f6dd9"
+    "patches/libzimg-0001-missing-includes-libcxx23.patch": "3fcef530450778434fe0d0bb2f3754c5832c06a2cde9b2ab28d4f96c453a7d4b"
   }
 }
