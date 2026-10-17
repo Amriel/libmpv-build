@@ -1,6 +1,7 @@
 # libmpv-build overlay: packages/mpv.cmake
 #
-# libmpv only (no mpv.exe), LGPL (-Dgpl=false), OpenGL render API, local files only.
+# libmpv only (no mpv.exe), LGPL (-Dgpl=false), OpenGL render API + D3D11 GPU output (shaderc +
+# SPIRV-Cross, statically linked; effectively LGPLv3 because of those Apache-2.0 parts), local files only.
 # Every optional feature is stated explicitly (enabled or disabled) so that the result does not
 # depend on what happens to be installed in the build environment ("auto" is never used for
 # anything that matters).
@@ -22,11 +23,15 @@ ExternalProject_Add(mpv
         libplacebo
         libzimg
         nvcodec-headers
+        shaderc
+        spirv-cross
         zlib
     GIT_REPOSITORY https://github.com/mpv-player/mpv.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_CLONE_FLAGS "--filter=tree:0"
     UPDATE_COMMAND ""
+    # (Only needed while the d3d11 VO was off; now d3d11 is on, mpv builds d3d11_helpers.c itself and the
+    # patch's `'dxgi-debug-d3d11' not in features` guard makes it a no-op. Kept so the hunk still applies.)
     # With d3d11 VO, ANGLE and Vulkan all off, mpv neither builds d3d11_helpers.c nor
     # runs its DXGI_DEBUG_D3D11 header check, yet d3d-hwaccel still builds
     # vf_d3d11vpp.c, which needs both: GUID redefinition against current mingw-w64
@@ -75,15 +80,15 @@ ExternalProject_Add(mpv
         -Duchardet=disabled
         -Djpeg=disabled
         -Dvulkan=disabled
-        -Dshaderc=disabled
-        -Dspirv-cross=disabled
-        -Dd3d11=disabled
         -Degl-angle-lib=disabled
         -Degl-angle-win32=disabled
         -Dmanpage-build=disabled
         -Dhtml-build=disabled
         -Dpdf-build=disabled
         # ---- what the OpenGL render API path needs: ON
+        -Dd3d11=enabled
+        -Dshaderc=enabled
+        -Dspirv-cross=enabled
         -Dgl=enabled
         -Dplain-gl=enabled
         -Dgl-win32=enabled

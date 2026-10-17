@@ -1,0 +1,36 @@
+From ad13b78f28807870a5bbe03d4622b6187c2cc097 Mon Sep 17 00:00:00 2001
+From: libmpv-build <libmpv-build@users.noreply.github.com>
+Date: Sat, 17 Oct 2026 20:55:32 +0300
+Subject: [PATCH] cmake: build the C API library (spirv-cross-c-shared) as a
+ static archive
+
+libmpv-build: libplacebo (d3d11) and mpv (d3d11 VO) link SPIRV-Cross statically into libmpv-2.dll. SPIRV_CROSS_SHARED=ON is kept only because it is the option that creates the C API library and its pkg-config file; the library itself becomes STATIC and no longer defines SPVC_EXPORT_SYMBOLS (so libmpv-2.dll does not re-export spvc_* functions).
+---
+ CMakeLists.txt | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8e5129c..861eb6a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -363,7 +363,7 @@ if (SPIRV_CROSS_SHARED)
+ 		install(FILES ${CMAKE_CURRENT_BINARY_DIR}/spirv-cross-c-shared.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+ 	endif()
+ 
+-	spirv_cross_add_library(spirv-cross-c-shared spirv_cross_c_shared SHARED
++	spirv_cross_add_library(spirv-cross-c-shared spirv_cross_c_shared STATIC
+ 			${spirv-cross-core-sources}
+ 			${spirv-cross-c-sources})
+ 
+@@ -419,11 +419,6 @@ if (SPIRV_CROSS_SHARED)
+ 		endif()
+ 	endif()
+ 
+-	target_compile_definitions(spirv-cross-c-shared PRIVATE SPVC_EXPORT_SYMBOLS)
+-
+-	set_target_properties(spirv-cross-c-shared PROPERTIES
+-			VERSION ${SPIRV_CROSS_VERSION}
+-			SOVERSION ${spirv-cross-abi-major})
+ endif()
+ 
+ if (SPIRV_CROSS_CLI)

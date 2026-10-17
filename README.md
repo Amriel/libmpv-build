@@ -1,13 +1,14 @@
 # libmpv-build
 
 Our own, pinned, minimal **LGPL** build of **libmpv** for Windows x86_64, made for Scrub Explorer
-(closed-source PySide6 file manager that embeds libmpv through the OpenGL render API as its
-video / image-sequence player).
+(closed-source PySide6 file manager that embeds libmpv as its video / image-sequence player, either through
+the OpenGL render API or with mpv's own Direct3D 11 GPU output rendering into a window handle, `wid`).
 
 Goals, in priority order:
 
 1. **LGPL only.** `-Dgpl=false` for mpv, no `--enable-gpl` / `--enable-version3` / `--enable-nonfree` for ffmpeg.
-   The app stays closed; libmpv is a separate, replaceable DLL.
+   The app stays closed; libmpv is a separate, replaceable DLL. (Since the Direct3D 11 output was added the DLL as a whole
+   is effectively **LGPL-3.0-or-later**, see "Licence situation".)
 2. **We own it.** Nothing depends on somebody else's releases. Every source is pinned to a full
    commit hash (or tarball + sha256) in [`pins.json`](pins.json). A rebuild is reproducible; things only
    change when we change a pin.
@@ -21,7 +22,7 @@ The workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) is `
 | Path | What |
 |---|---|
 | `pins.json` | **Every** external input: upstream recipe commit, container digest, Arch snapshot date, action SHAs, each source (commit or url+sha256, licence, why it is there). Single source of truth. |
-| `overlay/` | Our own cmake package files that replace the corresponding upstream ones (ffmpeg, mpv, libass, libplacebo, freetype2, harfbuzz, lcms2, libzimg, package list, ExternalProject download). |
+| `overlay/` | Our own cmake package files that replace the corresponding upstream ones (ffmpeg, mpv, libass, libplacebo, spirv-cross, freetype2, harfbuzz, lcms2, libzimg, package list, ExternalProject download). |
 | `tools/apply_pins.py` | Copies `overlay/` over the upstream checkout, applies 3 exact-match text edits, rewrites every package to `GIT_TAG <40-hex>`, **fails if anything is unpinned**. |
 | `tools/fetch_sources.py` | Fetches each git source at exactly its pinned commit (verifies `HEAD`). |
 | `tools/build.sh` | Our build driver (toolchain stage, libs stage). |
@@ -34,12 +35,18 @@ The workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) is `
 ## Licence situation (read this before shipping)
 
 * **mpv** is built with `-Dgpl=false` => **LGPL-2.1-or-later**.
+* **The DLL as a whole is effectively LGPL-3.0-or-later.** The Direct3D 11 GPU output links shaderc, glslang,
+  SPIRV-Tools, SPIRV-Headers and SPIRV-Cross statically (Apache-2.0 / BSD / MIT). Apache-2.0 is compatible with the LGPL only from
+  version 3 on; mpv, FFmpeg and libplacebo are all "2.1 **or later**", so they can be combined under the LGPL-3.0. Practically nothing
+  changes for the application (separate replaceable DLL, licence texts, source offer, see below), except that the third-party notices
+  must say "LGPL-3.0-or-later" for libmpv and list the Apache-2.0 components with their NOTICE/LICENSE texts (`licenses/` of the release).
 * **FFmpeg** is built without `--enable-gpl`, `--enable-version3`, `--enable-nonfree` => **LGPL-2.1-or-later**.
   Only two external libraries are linked into it: zlib-ng (zlib licence) and dav1d (BSD-2). CI fails the
   build if `config.h` says anything else (`tools/gen_info.py`).
 * Statically linked into the DLL besides mpv + ffmpeg: libplacebo (LGPL-2.1+), libass (ISC),
   freetype (FTL), harfbuzz (MIT), fribidi (LGPL-2.1+), libiconv (LGPL-2.1+), lcms2 (MIT),
-  zimg (WTFPL), xxhash (BSD-2), plus libc++/libc++abi/libunwind/compiler-rt builtins (Apache-2.0 with
+  zimg (WTFPL), xxhash (BSD-2), shaderc (Apache-2.0), glslang (BSD/MIT/Apache-2.0), SPIRV-Tools (Apache-2.0),
+  SPIRV-Headers (MIT-style), SPIRV-Cross (Apache-2.0), plus libc++/libc++abi/libunwind/compiler-rt builtins (Apache-2.0 with
   LLVM exception) and the mingw-w64 CRT/winpthreads (ZPL/public domain). Texts are in `licenses/`.
 * **No GPL component is linked.** The DLL has no Lua, no MuJS, no libcurl, no rubberband, no x264/x265, no libbluray, no libarchive.
 * The upstream build recipe `shinchiro/mpv-winbuild-cmake` publishes **no licence**. We therefore do **not** copy it
@@ -57,6 +64,7 @@ The workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) is `
    Because this repo is private, **keep a copy of the repo (zip of the release tag) with every app release** so that the
    offer can actually be honoured.
 4. Do not forbid reverse engineering / modification of the DLL in the app's licence.
+   (LGPL-3.0 additionally: no technical measures that stop the user from running a modified DLL in place of ours.)
 5. Do not add GPL-only pieces (e.g. a different libmpv build with `--enable-gpl`) next to it without re-checking.
 
 ## How to rebuild
@@ -74,7 +82,7 @@ The workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) is `
 What a run does: bootstrap the Arch container (digest-pinned) from a dated Arch Linux Archive snapshot -> checkout
 upstream recipe at the pinned commit -> `apply_pins.py` -> `fetch_sources.py` -> build the clang/lld/libc++/mingw-w64 toolchain
 (cached by `actions/cache`, key = hash of the toolchain pins) -> build zlib, libiconv, fribidi, freetype, harfbuzz, libass,
-ffnvcodec headers, xxhash, dav1d, lcms2, zimg, libplacebo, ffmpeg, mpv -> `gen_info.py` -> `check_dll.py` -> upload.
+ffnvcodec headers, xxhash, dav1d, lcms2, zimg, spirv-headers, spirv-tools, glslang, shaderc, spirv-cross, libplacebo, ffmpeg, mpv -> `gen_info.py` -> `check_dll.py` -> upload.
 A failed policy check fails the build job, so a release is never published from a DLL that violates the policy
 (the artifact is still uploaded for inspection).
 
@@ -141,12 +149,13 @@ The exact enabled lists end up in `CONFIG.txt` of each release (taken from ffmpe
 | `-Dcplugins=disabled` | No loading of C plugin DLLs. |
 | `-Dwin32-smtc=disabled` | No Windows media-transport controls (drops C++/WinRT and the winrt imports). |
 | `-Drubberband -Dopenal -Dsdl2-gamepad -Dsdl2-audio -Dsdl2-video -Dsubrandr -Dsixel -Duchardet -Djpeg = disabled` | Not needed; `jpeg` screenshots use ffmpeg's mjpeg encoder. |
-| `-Dvulkan=disabled -Dshaderc=disabled -Dspirv-cross=disabled -Dd3d11=disabled` | We use the **OpenGL render API**. The `d3d11` vo requires shaderc + spirv-cross; the Vulkan path is not used. Drops vulkan-1.dll, shaderc, spirv-*, glslang, Vulkan loader/headers from the build. |
+| `-Dvulkan=disabled` | The Vulkan path is not used (no vulkan-1.dll, no Vulkan loader). libplacebo still compiles its Vulkan *stubs* against the header-only `vulkan-header` pin. |
+| `-Dd3d11=enabled -Dshaderc=enabled -Dspirv-cross=enabled` | **Direct3D 11 GPU output** (`vo=gpu-next`/`gpu` with `gpu-api=d3d11`, `gpu-context=d3d11`, `d3d11-flip`, ...) for embedding via `wid`. It needs a GLSL->SPIR-V compiler (shaderc, bundles glslang + SPIRV-Tools) and SPIRV-Cross (SPIR-V->HLSL); libplacebo is built with `-Dd3d11=enabled -Dshaderc=enabled -Dglslang=disabled` against the same libraries. All statically linked; this is what makes the DLL effectively LGPL-3.0-or-later (Apache-2.0 parts). `d3d11.dll`/`dxgi.dll` are loaded by the DLL at runtime; `d3dcompiler_47.dll` (system) is loaded by mpv when it compiles HLSL. |
 | `-Degl-angle-lib=disabled -Degl-angle-win32=disabled` | No ANGLE as GL context, no `libEGL.dll` link. (`-Degl-angle=enabled` stays: headers only, needed for the d3d11->EGL interop code, which dlopens ANGLE only if an ANGLE context is used.) |
 | `-Dmanpage/html/pdf-build=disabled`, `-Dtests=false`, `-Dbuild-date=false` | Reproducibility / nothing to build. |
 | **kept**: `gl`, `plain-gl`, `gl-win32`, `gl-dxinterop(+d3d9)`, `egl-angle`(headers), `d3d-hwaccel`, `d3d9-hwaccel`, `cuda-hwaccel`, `cuda-interop`, `wasapi`, `iconv`, `zlib`, `lcms2`, `zimg` | Render API + hwdec interop + audio output + colour management / high quality sw conversion (parity with the verified reference build). |
 
-Other components removed from the superbuild: shaderc, glslang, spirv-tools/headers/cross, vulkan loader/headers, luajit, mujs,
+Other components removed from the superbuild: vulkan loader (only the headers are kept), luajit, mujs,
 libarchive, libbluray, libudfread, libdvd*, rubberband, libsamplerate, openal-soft, libsdl2, vapoursynth, curl/openssl/mbedtls/nettle/libssh/libsrt/nghttp*/ngtcp2/c-ares/libpsl,
 x264/x265/aom/svtav1/libvpx/libwebp/libjxl/highway/brotli/uavs3d/davs2, opus/vorbis/ogg/lame/speex/soxr/bs2b/libopenmpt/modplug/gme, libva/libvpl/amf,
 fontconfig/expat/libxml2/libunibreak, libpng/libjpeg/bzip2/xz/lzo/zstd, uchardet, libsixel, subrandr (rust), cppwinrt, gcc toolchain, rustup, widl, openmp.
@@ -175,11 +184,20 @@ Reference (zhongfly LGPL build) had 47 DLLs incl. WS2_32, WLDAP32, CRYPT32, Secu
 Expected now: `KERNEL32`, `api-ms-win-crt-*` (UCRT), `api-ms-win-core-synch-l1-2-0`, `api-ms-win-core-path-l1-1-0`, `ADVAPI32`, `USER32`, `GDI32`, `IMM32`, `SHELL32`, `SHCORE`,
 `SHLWAPI`(maybe), `ole32`, `OLEAUT32`(maybe), `OPENGL32`, `dwmapi`, `UxTheme`, `VERSION`, `AVRT`, `ntdll`, `bcrypt`, `bcryptprimitives`, `WINMM`, `DWrite`(libass DirectWrite).
 **Gone:** WS2_32, WLDAP32, CRYPT32, Secur32, Normaliz, IPHLPAPI, SETUPAPI, AVICAP32, vulkan-1, the winrt api-sets, (d2d1 should go too: it came from the C++/WinRT/SMTC or capture code; if it stays it is a local GPU API).
-Dynamic (`LoadLibrary`) only: `d3d11`, `dxgi`, `d3d9`, `nvcuda`, `nvcuvid`, `libEGL` (only if an ANGLE context is requested).
+Dynamic (`LoadLibrary`) only: `d3d11`, `dxgi`, `d3dcompiler_47`, `d3d9`, `nvcuda`, `nvcuvid`, `libEGL` (only if an ANGLE context is requested).
 
-## Using it from the app (Qt/WGL context)
+## Using it from the app
 
-Working hardware decode paths with a normal desktop-GL Qt context: `hwdec=d3d11va-copy`, `dxva2-copy`, `dxva2` (zero-copy through WGL_NV_DX_interop),
+### Direct3D 11 output through `wid` (preferred on Windows)
+
+Give mpv a child window of the Qt widget and let it render itself: `wid=<HWND>`, `vo=gpu-next`, `gpu-api=d3d11`, `gpu-context=d3d11`
+(`d3d11-flip=yes` is the default flip-model swap chain; `no` falls back to the blt model, which some NVIDIA/driver setups need for
+fullscreen). Hardware decode is zero-copy with `hwdec=d3d11va` (or `d3d11va-copy`, `nvdec`). Check at run time with
+`option-info/gpu-api/choices` and `option-info/gpu-context/choices` that `d3d11` is listed (the CI release gate does this headless with `vo=null`).
+
+### OpenGL render API (Qt/WGL context)
+
+Still built and unchanged. Working hardware decode paths with a normal desktop-GL Qt context: `hwdec=d3d11va-copy`, `dxva2-copy`, `dxva2` (zero-copy through WGL_NV_DX_interop),
 `nvdec` (CUDA-GL interop). Zero-copy `d3d11va` needs an ANGLE EGL context, which Qt-with-desktop-GL does not provide.
 Recommended defensive options: `config=no`, `load-scripts=no`, `input-default-bindings=no`, `input-vo-keyboard=no`, `osc=no`,
 `terminal=no`, `ytdl=no`, `load-unsafe-playlists=no`, `access-references=no`, `sub-auto=no`, `audio-display=no`, `autoload-files=no`.

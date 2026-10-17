@@ -174,8 +174,9 @@ def main():
     L.append("Every component below was built from EXACTLY the listed commit / tarball.")
     L.append("Compiled into libmpv-2.dll: mpv, ffmpeg (avcodec/avformat/avfilter/avutil/swscale/swresample),")
     L.append("libplacebo, libass, freetype, harfbuzz, fribidi, libiconv, lcms2, zimg, dav1d, zlib-ng, xxhash,")
+    L.append("shaderc (+ glslang, SPIRV-Tools, SPIRV-Headers) and SPIRV-Cross (Apache-2.0 / BSD: GLSL->SPIR-V->HLSL for the D3D11 output),")
     L.append("plus libc++/libc++abi/libunwind/compiler-rt-builtins/mingw-w64 CRT+winpthreads from the toolchain.")
-    L.append("Build-time only (not in the DLL): llvm/clang/lld, glad, fast_float, nv-codec-headers, angle-headers.")
+    L.append("Build-time only (not in the DLL): llvm/clang/lld, glad, fast_float, vulkan-header, nv-codec-headers, angle-headers.")
     L.append("")
     hdr = f"{'name':16} {'version':26} {'commit / sha256':42} {'license':34} url"
     L.append(hdr)

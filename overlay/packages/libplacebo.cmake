@@ -1,7 +1,9 @@
 # libmpv-build overlay: packages/libplacebo.cmake
-# libplacebo is a hard dependency of mpv. For the OpenGL render API we only need its OpenGL
-# backend: Vulkan, D3D11, glslang, shaderc (=> no vulkan loader/headers, shaderc, glslang,
-# spirv-tools/headers/cross packages at all) are OFF.
+# libplacebo is a hard dependency of mpv. Backends built: OpenGL (render API) and Direct3D 11
+# (mpv vo=gpu-next with gpu-api=d3d11). The D3D11 backend needs a GLSL->SPIR-V compiler (shaderc,
+# which bundles glslang + SPIRV-Tools) and SPIRV-Cross (SPIR-V -> HLSL); both are linked statically.
+# glslang as a second, separate compiler stays OFF (shaderc is preferred and sufficient). Vulkan is OFF
+# (no vulkan loader; see the vulkan-header note below).
 #
 # vulkan-header: HEADERS ONLY (upstream's unmodified vulkan-header.cmake, pinned). Even with
 # -Dvulkan=disabled libplacebo compiles src/vulkan/stubs.c, which includes <vulkan/vulkan.h>
@@ -21,6 +23,8 @@ ExternalProject_Add(libplacebo
         fast_float
         xxhash
         vulkan-header
+        shaderc
+        spirv-cross
     GIT_REPOSITORY https://github.com/haasn/libplacebo.git
     SOURCE_DIR ${SOURCE_LOCATION}
     GIT_CLONE_FLAGS "--filter=tree:0"
@@ -38,9 +42,9 @@ ExternalProject_Add(libplacebo
         --default-library=static
         -Dopengl=enabled
         -Dvulkan=disabled
-        -Dd3d11=disabled
+        -Dd3d11=enabled
         -Dglslang=disabled
-        -Dshaderc=disabled
+        -Dshaderc=enabled
         -Dlcms=enabled
         -Dunwind=disabled
         -Ddemos=false

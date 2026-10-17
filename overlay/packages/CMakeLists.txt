@@ -4,8 +4,8 @@
 # framework provides (ExternalProject_Add, cleanup(), force_rebuild_git(), ...).
 #
 # Differences from the upstream list (which has ~100 packages):
-#   * only the packages needed for an LGPL, local-files-only, OpenGL-render-API libmpv;
-#   * order matters: glad + fast_float must be defined before libplacebo, dav1d/nvcodec-headers
+#   * only the packages needed for an LGPL, local-files-only libmpv (OpenGL render API + D3D11 GPU output);
+#   * order matters: glad + fast_float must be defined before libplacebo (as are the SPIR-V chain spirv-headers/spirv-tools/glslang -> shaderc and spirv-cross), dav1d/nvcodec-headers
 #     before ffmpeg, ffmpeg + libplacebo + libass before mpv;
 #   * no `update` target (we never `git fetch` newer sources), no cargo/rust target.
 set_property(DIRECTORY PROPERTY EP_STEP_TARGETS download)
@@ -26,6 +26,11 @@ list(APPEND ep
     glad
     fast_float
     vulkan-header
+    spirv-headers
+    spirv-tools
+    glslang
+    shaderc
+    spirv-cross
     libplacebo
     angle-headers
     ffmpeg

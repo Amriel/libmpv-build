@@ -56,6 +56,7 @@
     "packages/libplacebo.cmake": "64c407a343a43bfe8b372b12d5dac4621d1362f094239cfb2c215e6ce213332f",
     "packages/freetype2.cmake": "eed687f636ec335af2e341537e089857f75a659e69d02da5176715628bf3b035",
     "packages/harfbuzz.cmake": "9b8a2f9f2b7dfb440ff7f6c925489ae1cee64b3119f5556f6c103c786f653f4b",
+    "packages/spirv-cross.cmake": "a101e31511fed851006a88ecd8df71acd5fe498d9adc800d7bd455baf1e7a56c",
     "packages/lcms2.cmake": "78ac60adc47be993cf59f7f1d318d78558a2850755a8b4b5181f68434245edbe",
     "packages/libzimg.cmake": "918aac808ae4d526a9148c16735a615c6e7467ccda623afca07d34aee4b87c06",
     "cmake/download_externalproject.cmake": "cb384f2032ea35ef487fdae7e32bdcdec9b48464df0ea8c54b3ac3c0b7ea9f88",
@@ -282,6 +283,74 @@
       "why": "Header-only, build-time input of libplacebo."
     },
     {
+      "name": "spirv-headers",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/KhronosGroup/SPIRV-Headers.git",
+      "rev": "04fd3caa1e8267e4d95c806cad901181728e1006",
+      "ref": "shaderc DEPS spirv_headers_revision (SPIRV-Headers, 2026-09-09)",
+      "version": "2026.x (sdk 1.4.363)",
+      "license": "MIT-style (Khronos)",
+      "depth": 1,
+      "sparse": null,
+      "why": "Build-time input of SPIRV-Tools, glslang and shaderc (SPIR-V enum/grammar headers; their constants end up compiled into the DLL). Exactly the revision named in shaderc's DEPS file at the pinned shaderc commit."
+    },
+    {
+      "name": "spirv-tools",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/KhronosGroup/SPIRV-Tools.git",
+      "rev": "ef96ed763b43b59b33b31b362f09a02b729fa1c9",
+      "ref": "v2026.4.rc2 = shaderc DEPS spirv_tools_revision",
+      "version": "v2026.4.rc2",
+      "license": "Apache-2.0",
+      "depth": 1,
+      "sparse": null,
+      "why": "Linked into shaderc (SPIR-V validation/optimisation); statically part of libmpv-2.dll. Exactly the revision named in shaderc's DEPS file."
+    },
+    {
+      "name": "glslang",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/KhronosGroup/glslang.git",
+      "rev": "e1b562a8bed273a02f30b59b66a5d499793cede5",
+      "ref": "16.6.0 (tag vulkan-sdk-1.4.363.0) = shaderc DEPS glslang_revision",
+      "version": "16.6.0",
+      "license": "BSD-3-Clause / BSD-2-Clause / MIT / Apache-2.0 (see licenses/glslang)",
+      "depth": 1,
+      "sparse": [
+        "/*",
+        "!Test"
+      ],
+      "why": "GLSL front end inside shaderc (GLSL -> SPIR-V) for the D3D11 GPU output; statically part of libmpv-2.dll. Exactly the revision named in shaderc's DEPS file."
+    },
+    {
+      "name": "shaderc",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/google/shaderc.git",
+      "rev": "ba3e587dbc13d423c713e964ac08e094731a034d",
+      "ref": "main @ 2026-10-02 (newest commit before the pin date 2026-10-04)",
+      "version": "git-ba3e587",
+      "license": "Apache-2.0",
+      "depth": 1,
+      "sparse": null,
+      "why": "The GLSL -> SPIR-V compiler that mpv (-Dshaderc=enabled) and libplacebo (-Dshaderc=enabled) need for the Direct3D 11 backend (vo=gpu-next, gpu-api=d3d11). Built as libshaderc_combined.a and linked statically; no tests, no executables."
+    },
+    {
+      "name": "spirv-cross",
+      "role": "lib",
+      "kind": "git",
+      "url": "https://github.com/KhronosGroup/SPIRV-Cross.git",
+      "rev": "f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7",
+      "ref": "vulkan-sdk-1.4.363.0 (2026-09-16)",
+      "version": "vulkan-sdk-1.4.363.0",
+      "license": "Apache-2.0 (some files MIT)",
+      "depth": 1,
+      "sparse": null,
+      "why": "SPIR-V -> HLSL translation used by libplacebo's and mpv's Direct3D 11 backends (required by mpv -Dd3d11=enabled -Dspirv-cross=enabled). C API library only, built static (patches/spirv-cross-0001-static-c-api.patch); no CLI."
+    },
+    {
       "name": "libplacebo",
       "role": "lib",
       "kind": "git",
@@ -292,7 +361,7 @@
       "license": "LGPL-2.1-or-later",
       "depth": 1,
       "sparse": null,
-      "why": "Hard dependency of mpv (>=7.360.1). Built with the OpenGL backend only (no Vulkan, no D3D11, no shaderc/glslang/spirv)."
+      "why": "Hard dependency of mpv (>=7.360.1). Built with the OpenGL and Direct3D 11 backends (D3D11 via shaderc + SPIRV-Cross, statically linked); no Vulkan, no separate glslang backend."
     },
     {
       "name": "angle-headers",
@@ -356,6 +425,11 @@
     "glad",
     "fast_float",
     "vulkan-header",
+    "spirv-headers",
+    "spirv-tools",
+    "glslang",
+    "shaderc",
+    "spirv-cross",
     "libplacebo",
     "angle-headers",
     "ffmpeg",
@@ -364,6 +438,7 @@
   "patches_sha256": {
     "_comment": "Verbatim upstream-project patches applied by package recipes (patches/ is outside overlay/, so it does not touch the toolchain cache key). Re-check with sha256sum when changing.",
     "patches/libzimg-0001-missing-includes-libcxx23.patch": "3fcef530450778434fe0d0bb2f3754c5832c06a2cde9b2ab28d4f96c453a7d4b",
-    "patches/mpv-0001-d3d11-helpers-for-d3d-hwaccel.patch": "5ccbc672cdd944ddc37ff335f63f917bf1643093e38c1fc2b3ed38cd1a838c45"
+    "patches/mpv-0001-d3d11-helpers-for-d3d-hwaccel.patch": "5ccbc672cdd944ddc37ff335f63f917bf1643093e38c1fc2b3ed38cd1a838c45",
+    "patches/spirv-cross-0001-static-c-api.patch": "96b4eeadc09e1200128b9bfb506914e029e0df9f77199007fc6e1c7a076e6797"
   }
 }

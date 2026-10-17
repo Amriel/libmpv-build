@@ -3,9 +3,11 @@ NOTICE - attributions and third-party licences
 
 This repository is a BUILD RECIPE. It builds, from pinned sources, a Windows x86_64 libmpv-2.dll.
 The recipe's own files are MIT licensed (see LICENSE). The built DLL is a combination of third-party
-works under the licences below; the DLL as a whole is distributed under the LGPL-2.1-or-later
-(mpv and FFmpeg are built in their LGPL configurations: mpv -Dgpl=false; FFmpeg without
---enable-gpl, --enable-version3 and --enable-nonfree).
+works under the licences below. mpv and FFmpeg are built in their LGPL configurations (mpv -Dgpl=false;
+FFmpeg without --enable-gpl, --enable-version3 and --enable-nonfree) => LGPL-2.1-or-later. Because the
+Direct3D 11 output statically links shaderc, glslang, SPIRV-Tools and SPIRV-Cross (Apache-2.0, which is
+compatible with the LGPL only in version 3), the DLL as a whole is to be treated as LGPL-3.0-or-later.
+It is still a separate, replaceable library and contains no GPL component.
 
 1. Starting points of this recipe
 ---------------------------------
@@ -36,6 +38,11 @@ works under the licences below; the DLL as a whole is distributed under the LGPL
   mpv                 LGPL-2.1-or-later   (built with -Dgpl=false)   https://mpv.io
   FFmpeg              LGPL-2.1-or-later   (no GPL, no version3)      https://ffmpeg.org
   libplacebo          LGPL-2.1-or-later                              https://code.videolan.org/videolan/libplacebo
+  shaderc             Apache-2.0  (GLSL -> SPIR-V; Direct3D 11 output) https://github.com/google/shaderc
+  glslang             BSD-3-Clause / BSD-2-Clause / MIT / Apache-2.0 (inside shaderc; see licenses/glslang)
+  SPIRV-Tools         Apache-2.0  (inside shaderc)
+  SPIRV-Headers       MIT-style (Khronos; see licenses/spirv-headers)
+  SPIRV-Cross         Apache-2.0 (some files MIT)  (SPIR-V -> HLSL; Direct3D 11 output)
   libass              ISC                                            https://github.com/libass/libass
   FreeType            FreeType License (BSD-style) or GPL-2.0-only; used under the FTL
   HarfBuzz            MIT (Old MIT)
@@ -49,6 +56,7 @@ works under the licences below; the DLL as a whole is distributed under the LGPL
   ffnvcodec headers   MIT (nv-codec-headers; build time only, NVIDIA libraries are dlopen()ed at runtime)
   glad (generator)    MIT (build time only)
   fast_float          Apache-2.0 OR MIT OR BSL-1.0 (build time only)
+  Vulkan-Headers      Apache-2.0 OR MIT (headers only, build time only; no Vulkan code is linked)
   ANGLE headers       BSD-3-Clause (EGL/KHR headers only, build time only)
   LLVM/Clang/LLD, libc++, libc++abi, libunwind, compiler-rt builtins
                       Apache-2.0 WITH LLVM-exception (the C++ runtime and builtins are linked statically)
