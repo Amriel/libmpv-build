@@ -210,7 +210,9 @@ jobs:
           set -euo pipefail
           ls -R art | head -60
           R=release_files; mkdir -p "$R"
-          B=art/libmpv-64
+          # download-artifact кладе ЄДИНИЙ артефакт прямо в art/ (без теки з
+          # його назвою), а кілька — у art/<назва>/: беремо те, що є
+          if [ -d art/libmpv-64 ]; then B=art/libmpv-64; else B=art; fi
           cp "$B/libmpv-2.dll" "$B/libmpv-2.dll.sha256" "$B/SOURCES.txt" "$B/CONFIG.txt" "$R/"
           ( cd "$B" && zip -qr "../../$R/libmpv-dev.zip" include libmpv.dll.a )
           ( cd "$B" && zip -qr "../../$R/licenses.zip" licenses )
@@ -222,7 +224,7 @@ jobs:
             cp "$V/CONFIG.txt" "$R/CONFIG.x86-64-v3.txt"
           fi
           {
-            echo "libmpv (LGPL-2.1+, local files only, OpenGL render API) for Windows x86_64."
+            echo "libmpv (LGPL; with the Apache-2.0 shader compilers effectively LGPL-3.0-or-later; local files only; Direct3D 11 output via wid) for Windows x86_64."
             echo
             echo "Built from pinned sources; see SOURCES.txt (every component + exact commit/tarball) and CONFIG.txt."
             echo "Rebuild recipe: this repository at tag \`$TAG\`. Build run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
