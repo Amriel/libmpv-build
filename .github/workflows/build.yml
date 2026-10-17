@@ -210,8 +210,8 @@ jobs:
           set -euo pipefail
           ls -R art | head -60
           R=release_files; mkdir -p "$R"
-          # download-artifact кладе ЄДИНИЙ артефакт прямо в art/ (без теки з
-          # його назвою), а кілька — у art/<назва>/: беремо те, що є
+          # download-artifact puts a SINGLE matching artifact straight into art/,
+          # several into art/<name>/: take whichever exists
           if [ -d art/libmpv-64 ]; then B=art/libmpv-64; else B=art; fi
           cp "$B/libmpv-2.dll" "$B/libmpv-2.dll.sha256" "$B/SOURCES.txt" "$B/CONFIG.txt" "$R/"
           ( cd "$B" && zip -qr "../../$R/libmpv-dev.zip" include libmpv.dll.a )
